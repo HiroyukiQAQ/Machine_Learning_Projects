@@ -80,51 +80,57 @@ def gradient_descent(w, x, y, lam):
         return gradient_descent(w_new, x, y, lam)
 
 
-# 6-fold cross validation
+# 10-fold cross validation
+# random shuffle all the emails and divide into 10 groups
 index = np.arange(3000)
 np.random.shuffle(index)
-index = index.reshape(6, 500)
+index = index.reshape(10, 300)
 
-test = np.zeros((500, 6277), dtype=np.float128)
-train = np.zeros((2500, 6277), dtype=np.float128)
+# initial several arrays for future use, to store the data
+test = np.zeros((300, 6277), dtype=np.float128)
+train = np.zeros((2700, 6277), dtype=np.float128)
 
-test_label = np.zeros(500, dtype=int)
-train_label = np.zeros(2500, dtype=int)
+test_label = np.zeros(300, dtype=int)
+train_label = np.zeros(2700, dtype=int)
 
 lamda = np.array([])
 rate_test = np.array([])
 rate_train = np.array([])
 
+# iteration for the different lambda
+# the range of lambda I set is from (0.1, 0.3), with step 0.01
+print('computing start!')
 for i in range(0, 20):
-
-    lamda = np.append(lamda, 0.1+i*0.01)
-
+    lamda = np.append(lamda, 0.1 + i * 0.01)
     rate_temp_test = 0
     rate_temp_train = 0
 
-    for k in range(0, 6):
+    # 10-folds cross validation
+    for k in range(0, 10):
         test_index = index[k]
-        train_index = np.delete(index, k, 0).reshape(2500)
+        train_index = np.delete(index, k, 0).reshape(2700)
 
+        # construct the test set, with size of 300
         ct = 0
         for n in test_index:
             test[ct] = smstf[n]
             test_label[ct] = labelnum[n]
             ct = ct + 1
 
+        # construct the train set, with size of 2700
         ct = 0
         for n in train_index:
             train[ct] = smstf[n]
             train_label[ct] = labelnum[n]
             ct = ct + 1
-
-        w_temp = gradient_descent(w0, train, train_label, lamda[i])
+        # implement the gradient descent algorithm to compute the weight
+        w0 = gradient_descent(w0, train, train_label, lamda[i])
 
         # compute accuracy on test set
         hit = 0
         j = 0
         for sms in test:
-            result = sigmoid(w_temp, sms)
+            result = sigmoid(w0, sms)
             if result >= 0.5:
                 result = 1
             else:
@@ -134,13 +140,13 @@ for i in range(0, 20):
                 hit = hit + 1
             j = j + 1
 
-        rate_temp_test = rate_temp_test + hit/500
+        rate_temp_test = rate_temp_test + hit / 300
 
         # compute accuracy on train set
         hit = 0
         j = 0
         for sms in train:
-            result = sigmoid(w_temp, sms)
+            result = sigmoid(w0, sms)
             if result >= 0.5:
                 result = 1
             else:
@@ -150,10 +156,13 @@ for i in range(0, 20):
                 hit = hit + 1
             j = j + 1
 
-        rate_temp_train = rate_temp_train + hit/2500
+        rate_temp_train = rate_temp_train + hit / 2700
 
-    rate_test = np.append(rate_test, 100*(rate_temp_test/6))
-    rate_train = np.append(rate_train, 100*(rate_temp_train/6))
+    rate_test = np.append(rate_test, 100 * (rate_temp_test / 10))
+    rate_train = np.append(rate_train, 100 * (rate_temp_train / 10))
+    print('computing......', 5 * (i + 1), '% complete')
+
+print('Done!')
 
 print('optimal average accuracy rate on test: ', np.argmax(rate_test), np.amax(rate_test))
 lamda_opt = lamda[np.argmax(rate_test)]
